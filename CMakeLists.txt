@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dataLog)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+## is used, also find cpp catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -22,7 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+#find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(QuanergyClient REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common io)
@@ -151,7 +151,7 @@ file(GLOB_RECURSE project_HEADERS
 ## The recommended prefix ensures that target names across packages don't collide
 ###
 #add_executable(${PROJECT_NAME}_node src/listener.cpp)
-add_executable(${PROJECT_NAME}_node src/listener_2.cpp)
+add_executable(${PROJECT_NAME}_node src/listener_3.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -167,7 +167,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
-   quanergy_client
+   #quanergy_client
 )
 
 #############
