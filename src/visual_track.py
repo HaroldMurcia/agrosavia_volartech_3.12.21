@@ -30,7 +30,7 @@ def quad2euler(qx,qy,qz,qw):
         roll, pitch, yaw = euler_from_quaternion (orientation_list, axes='sxyz')
         return yaw, pitch, roll
 
-data=pd.read_csv("/home/hmurcia/Desktop/test0.txt",sep='\t',header=0, skiprows=2)
+data=pd.read_csv("/home/hmurcia/Desktop/test.txt",sep='\t',header=0, skiprows=2)
 data.rename(columns={ data.columns[0]: "scan_id" }, inplace = True)
 data.rename(columns={ data.columns[1]: "time" }, inplace = True)
 data.rename(columns={ data.columns[2]: "X" }, inplace = True)
@@ -58,7 +58,7 @@ YAW=np.zeros([1,L])
 X_ini = data.X[0]
 Y_ini = data.Y[0]
 Z_ini = data.Z[0]
-for k in range(0,L,100):
+for k in range(0,L,10000):
     longitude = data.longitude.values[k]*np.pi/180.0
     latitude  = data.lat[k]*np.pi/180.0
     ECEF2ENU=np.array([ [-np.sin(longitude),np.cos(longitude),0,0],
@@ -73,15 +73,15 @@ for k in range(0,L,100):
     N[0,k]=ENU[1,0]
     U[0,k]=ENU[2,0]
     # Angles rotation
-    quat_ned=[data.qx[k], data.qy[k], data.qz[k], data.qw[k]]
-    yaw_ned,pitch_ned,roll_ned = quad2euler(quat_ned[0],quat_ned[1],quat_ned[2],quat_ned[3])
-    quat_R = quaternion_from_euler(np.pi,0,-np.pi/2.0)
-    quat_enu = quaternion_multiply(quat_R, quat_ned)
-    yaw_enu,pitch_enu,roll_enu = quad2euler(quat_enu[0],quat_enu[1],quat_enu[2],quat_enu[3])
+    #quat_ned=[data.qx[k], data.qy[k], data.qz[k], data.qw[k]]
+    #yaw_ned,pitch_ned,roll_ned = quad2euler(quat_ned[0],quat_ned[1],quat_ned[2],quat_ned[3])
+    #quat_R = quaternion_from_euler(np.pi,0,-np.pi/2.0)
+    #quat_enu = quaternion_multiply(quat_R, quat_ned)
+    #yaw_enu,pitch_enu,roll_enu = quad2euler(quat_enu[0],quat_enu[1],quat_enu[2],quat_enu[3])
     # local NED → ROS ENU: (x y z)→(y x -z) or (w x y z)→(y x -z w)  [https://github.com/mavlink/mavros/issues/216]
-    YAW[0,k]=-yaw_ned #yaw_enu
-    ROLL[0,k]=roll_ned #pitch_enu
-    PITCH[0,k]=pitch_ned #roll_enu
+    #YAW[0,k]=-yaw_ned #yaw_enu
+    #ROLL[0,k]=roll_ned #pitch_enu
+    #PITCH[0,k]=pitch_ned #roll_enu
 
 fig = plt.figure()
 ax = plt.axes(projection='3d')
