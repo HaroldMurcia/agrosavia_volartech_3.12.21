@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import numpy as np
+from tqdm import tqdm
 # ROS
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_multiply
 
@@ -58,7 +59,7 @@ YAW=np.zeros([1,L])
 X_ini = data.X[0]
 Y_ini = data.Y[0]
 Z_ini = data.Z[0]
-for k in range(0,L,10000):
+for k in tqdm(range(0,L,1000000)):
     longitude = data.longitude.values[k]*np.pi/180.0
     latitude  = data.lat[k]*np.pi/180.0
     ECEF2ENU=np.array([ [-np.sin(longitude),np.cos(longitude),0,0],
@@ -90,3 +91,4 @@ ax.plot3D(E[0,:], N[0,:], U[0,:], 'red')
 ax.set_xlabel('x')
 ax.set_ylabel('y')
 ax.set_zlabel('z');
+fig.savefig("path.png")
