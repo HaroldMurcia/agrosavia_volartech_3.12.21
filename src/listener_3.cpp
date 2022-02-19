@@ -74,71 +74,64 @@ struct predictions {
   double latitude,longitude,altitude;
 } my_predictions;
 
-struct data_object {
-  //{data[k],data[k-1],data[k-2]}
-  double X[3]={0,0,0};
-  double timestamps[3]={0,0,0};
-  double Coef[2]={0,0};
-  int data_FLAG=0;
+class data_object {
+  public:
+    //{data[k],data[k-1],data[k-2]}
+    double X[3]={0,0,0};
+    double timestamps[3]={0,0,0};
+    double estimation=0;
+    double Coef[2]={0,0};
+    int data_FLAG=0;
+
+    void data_object_update(double input_value, double input_time){
+      X[2]=X[1];
+      X[1]=X[0];
+      X[0]=input_value;
+      timestamps[2]=timestamps[1];
+      timestamps[1]=timestamps[0];
+      timestamps[0]=input_time;
+      data_FLAG+=1;
+      if (data_FLAG>=3){
+        data_FLAG=3;
+        LeastSquare();
+      }
+    }
+
+    void LeastSquare(){
+      MatrixXd M(3,2); //where 3 is the number of samples
+      MatrixXd Y(3,1);
+      MatrixXd W(2,1);
+      MatrixXd A(2,2);
+      //
+      W(0,0)=0;
+      W(1,0)=0;
+      //
+      M(0,0)=timestamps[2]; //[k-2]
+      M(1,0)=timestamps[1]; //[k-1]
+      M(2,0)=timestamps[0]; //[k]
+      M(0,1)=1;
+      M(1,1)=1;
+      M(2,1)=1;
+      //
+      Y(0,0)=X[2]; //[k-2]
+      Y(1,0)=X[1]; //[k-1]
+      Y(2,0)=X[0]; //[K]
+      //
+      A=((M.transpose()*M).inverse());
+      W = A*M.transpose()*Y;
+      Coef[0] = W(0,0);
+      Coef[1] = W(1,0);
+    }
+
+    double predict(double timeStamp_to_pred){
+      double prediction = timeStamp_to_pred*Coef[0]+Coef[1];
+      return prediction;
+    }
+
 } latitude_estimation, longitude_estimation, altitude_estimation, qx_estimation, qy_estimation, qz_estimation,qw_estimation,x_estimation,y_estimation,z_estimation;
 ///////////////////////////////////////////////////////////////////////////////
 
-
-// FUNCTIONS /////////////////////////////////////////////////////////////////
-void LeastSquare(data_object* data){
-  MatrixXd M(3,2); //where 3 is the number of samples
-  MatrixXd Y(3,1);
-  MatrixXd W(2,1);
-  MatrixXd A(2,2);
-  //
-  W(0,0)=0;
-  W(1,0)=0;
-  //
-  M(0,0)=data->timestamps[2]; //[k-2]
-  M(1,0)=data->timestamps[1]; //[k-1]
-  M(2,0)=data->timestamps[0]; //[k]
-  M(0,1)=1;
-  M(1,1)=1;
-  M(2,1)=1;
-  //
-  Y(0,0)=data->X[2]; //[k-2]
-  Y(1,0)=data->X[1]; //[k-1]
-  Y(2,0)=data->X[0]; //[K]
-  //
-  A=((M.transpose()*M).inverse());
-  W = A*M.transpose()*Y;
-  data->Coef[0] = W(0,0);
-  data->Coef[1] = W(1,0);
-}
-
-void data_update(data_object* data, double input_value, double input_time){
-  data->X[2]=data->X[1];
-  data->X[1]=data->X[0];
-  data->X[0]=input_value;
-  data->timestamps[2]=data->timestamps[1];
-  data->timestamps[1]=data->timestamps[0];
-  data->timestamps[0]=input_time;
-  data->data_FLAG+=1;
-  if (data->data_FLAG>=3){
-    data->data_FLAG=3;
-    LeastSquare(data);
-  }
-}
-
-double predict(data_object* data,double timeStamp_to_pred){
-  double pred= timeStamp_to_pred*data->Coef[0]+data->Coef[1];
-  /*
-  ROS_INFO_STREAM("PRED="<<pred);
-  ROS_INFO_STREAM("X[2]="<<data->X[2]);
-  ROS_INFO_STREAM("X[1]="<<data->X[1]);
-  ROS_INFO_STREAM("X[0]="<<data->X[0]);
-  ROS_INFO_STREAM("t[2]="<<data->timestamps[2]);
-  ROS_INFO_STREAM("t[1]="<<data->timestamps[1]);
-  ROS_INFO_STREAM("t[0]="<<data->timestamps[0]);
-  ROS_INFO_STREAM("t[k]="<<timeStamp_to_pred);
-  */
-  return pred;
-}
+///////////////////////////////////////////////////////////////////// Functions
 
 void createFile(){
   myfile.open(fileName.c_str());
@@ -173,41 +166,39 @@ void callback_quanergy(const sensor_msgs::PointCloud2::ConstPtr& msg_1) //10HZ
       zero_time_FLAG=1;
     }else{
       QUANERGY_time_stamp = msg_1->header.stamp - zero_QUANERGY_time_stamp;
-      ROS_INFO_STREAM("Q timeStamp: " << QUANERGY_time_stamp );
-      ROS_INFO_STREAM("ODOM_time_stamp : " << ODOM_time_stamp );
-      ROS_INFO_STREAM("GPS_time_stamp : " << GPS_time_stamp );
+      //ROS_INFO_STREAM("Q timeStamp: " << QUANERGY_time_stamp );
+      //ROS_INFO_STREAM("ODOM_time_stamp : " << ODOM_time_stamp );
+      //ROS_INFO_STREAM("GPS_time_stamp : " << GPS_time_stamp );
       // prediction with interpolation
-      my_predictions.qx=predict(&qx_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.qy=predict(&qy_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.qz=predict(&qz_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.qw=predict(&qw_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.x=predict(&x_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.y=predict(&y_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.z=predict(&z_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.latitude=predict(&latitude_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.longitude=predict(&longitude_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      my_predictions.altitude=predict(&altitude_estimation, QUANERGY_time_stamp.toNSec()*1e-9);
-      //
-    }
-
-    for (size_t i =0; i < L; i++)
-    {
-      x = depth.points[i].x;
-      z = depth.points[i].y;
-      y = depth.points[i].z;
-      intensity = depth.points[i].intensity;
-      ring = depth.points[i].ring;
-      //if (x==x)// ask and jump for a nan value
-      if(1) // just for debug
+      qx_estimation.estimation = qx_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      qy_estimation.estimation = qy_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      qz_estimation.estimation = qz_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      qw_estimation.estimation = qw_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      x_estimation.estimation  =  x_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      y_estimation.estimation  = y_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      z_estimation.estimation  = z_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      latitude_estimation.estimation  = latitude_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      longitude_estimation.estimation = longitude_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      altitude_estimation.estimation  = altitude_estimation.predict(QUANERGY_time_stamp.toNSec()*1e-9);
+      for (size_t i =0; i < L; i++)
       {
-        //myfile << setprecision(12) << scan_id << "\t"<< stamp_delta << "\t" << my_predictions.qx << "\t" << my_predictions.qy << "\t" << my_predictions.qz << "\t" << my_predictions.qw << "\t" << my_predictions.x << "\t" << my_predictions.y << "\t" << my_predictions.z << "\t" << latitude_hold << "\t" << longitude_hold << "\t" << altitude_hold  << "\t"  << x << "\t" << y << "\t" << z << "\t" << intensity << "\t" << ring  << "\n";
-        // for  testing:
-        myfile << setprecision(12) << scan_id << "\t"<< stamp_delta << "\t" << pos_x_hold-pos_x_ini << "\t" << pos_y_hold-pos_y_ini << "\t" << pos_z_hold-pos_z_ini << "\t" << my_predictions.qx << "\t" << my_predictions.qy << "\t" << my_predictions.qz << "\t" << my_predictions.qw << "\t" << latitude_hold << "\t" << longitude_hold << "\t" << altitude_hold  << "\n";
+        x = depth.points[i].x;
+        z = depth.points[i].y;
+        y = depth.points[i].z;
+        intensity = depth.points[i].intensity;
+        ring = depth.points[i].ring;
+        int echo_layer = 0;
+        if (x==x)// ask and jump for a nan value
+        {
+          // for  testing:
+          myfile << setprecision(12) << scan_id << "\t"<< stamp_delta << "\t" << x_estimation.estimation << "\t" << y_estimation.estimation << "\t" << z_estimation.estimation << "\t" << qx_estimation.estimation << "\t" << qy_estimation.estimation  << "\t" << qz_estimation.estimation  << "\t" << qw_estimation.estimation  << "\t" << latitude_estimation.estimation << "\t" << longitude_estimation.estimation << "\t" << altitude_estimation.estimation  << "\t" << x << "\t" << y << "\t" << z << "\t" << intensity << "\t" << ring << "\t" << echo_layer << "\n";
+          //myfile << setprecision(12) << scan_id << "\t"<< stamp_delta << "\t" << pos_x_hold << "\t" << pos_y_hold << "\t" << pos_z_hold << "\t" << my_predictions.qx << "\t" << my_predictions.qy << "\t" << my_predictions.qz << "\t" << my_predictions.qw << "\t" << latitude_hold << "\t" << longitude_hold << "\t" << altitude_hold  << "\n";
+        }
       }
-    }
-    myfile.close();
-  }
-}
+      myfile.close();
+    } //else
+  } // Flags
+} // void
 
 
 void callback_Odom(const nav_msgs::Odometry::ConstPtr& msg_2) //20HZ
@@ -247,13 +238,13 @@ void callback_Odom(const nav_msgs::Odometry::ConstPtr& msg_2) //20HZ
   if (zero_time_FLAG==1){
     ODOM_time_stamp = msg_2->header.stamp-zero_time_stamp;
   }
-  data_update(&qx_estimation,qx_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&qy_estimation,qy_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&qz_estimation,qz_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&qw_estimation,qw_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&x_estimation,pos_x_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&y_estimation,pos_y_hold,ODOM_time_stamp.toNSec()*1e-9);
-  data_update(&z_estimation,pos_z_hold,ODOM_time_stamp.toNSec()*1e-9);
+  qx_estimation.data_object_update(qx_hold,ODOM_time_stamp.toNSec()*1e-9);
+  qy_estimation.data_object_update(qy_hold,ODOM_time_stamp.toNSec()*1e-9);
+  qz_estimation.data_object_update(qz_hold,ODOM_time_stamp.toNSec()*1e-9);
+  qw_estimation.data_object_update(qw_hold,ODOM_time_stamp.toNSec()*1e-9);
+  x_estimation.data_object_update(pos_x_hold, ODOM_time_stamp.toNSec()*1e-9);
+  y_estimation.data_object_update(pos_y_hold, ODOM_time_stamp.toNSec()*1e-9);
+  z_estimation.data_object_update(pos_z_hold, ODOM_time_stamp.toNSec()*1e-9);
 }
 
 
@@ -267,13 +258,13 @@ void callback_GPS(const sensor_msgs::NavSatFix::ConstPtr& msg_3){ //20HZ
   }
   //Latitude uptate
   latitude_hold=msg_3->latitude;
-  data_update(&latitude_estimation,latitude_hold, GPS_time_stamp.toNSec()*1e-9);
+  latitude_estimation.data_object_update(latitude_hold, GPS_time_stamp.toNSec()*1e-9);
   //Longitude uptate
   longitude_hold=msg_3->longitude;
-  data_update(&longitude_estimation,longitude_hold, GPS_time_stamp.toNSec()*1e-9);
+  longitude_estimation.data_object_update(longitude_hold, GPS_time_stamp.toNSec()*1e-9);
   //Altitude uptate
   altitude_hold=msg_3->altitude;
-  data_update(&altitude_estimation,altitude_hold, GPS_time_stamp.toNSec()*1e-9);
+  altitude_estimation.data_object_update(altitude_hold, GPS_time_stamp.toNSec()*1e-9);
 }
 
 
